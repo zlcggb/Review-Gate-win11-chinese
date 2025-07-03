@@ -124,6 +124,13 @@ if exist "%SCRIPT_DIR%\review_gate_v2_mcp_fixed.py" (
     pause
     exit /b 1
 )
+if exist "%SCRIPT_DIR%\review_gate_v2_mcp.py" (
+    copy "%SCRIPT_DIR%\review_gate_v2_mcp.py" "!REVIEW_GATE_DIR!\" >nul
+) else (
+    %log_error% MCP server file not found: %SCRIPT_DIR%\review_gate_v2_mcp.py%NC%
+    pause
+    exit /b 1
+)
 
 if exist "%SCRIPT_DIR%\requirements_simple.txt" (
     copy "%SCRIPT_DIR%\requirements_simple.txt" "!REVIEW_GATE_DIR!\" >nul
@@ -182,11 +189,13 @@ REM Create simplified MCP configuration without complex JSON parsing
 
 REM Create basic MCP configuration with Review Gate V2
 set "PYTHON_PATH=!REVIEW_GATE_DIR!\venv\Scripts\python.exe"
-set "MCP_SCRIPT_PATH=!REVIEW_GATE_DIR!\review_gate_v2_mcp_fixed.py"
+set "MCP_SCRIPT_PATH=!REVIEW_GATE_DIR!\review_gate_v2_mcp.py"
+set "MCP_SCRIPT_PATH_FIXED=!REVIEW_GATE_DIR!\review_gate_v2_mcp_fixed.py"
 
 REM Replace backslashes with forward slashes for JSON
 set "PYTHON_PATH_JSON=!PYTHON_PATH:\=/!"
 set "MCP_SCRIPT_PATH_JSON=!MCP_SCRIPT_PATH:\=/!"
+set "MCP_SCRIPT_PATH_FIXED_JSON=!MCP_SCRIPT_PATH_FIXED:\=/!"
 set "REVIEW_GATE_DIR_JSON=!REVIEW_GATE_DIR:\=/!"
 
 REM Create MCP configuration file directly
@@ -196,6 +205,16 @@ echo   "mcpServers": {
 echo     "review-gate-v2": {
 echo       "command": "!PYTHON_PATH_JSON!",
 echo       "args": ["!MCP_SCRIPT_PATH_JSON!"],
+echo       "env": {
+echo         "PYTHONPATH": "!REVIEW_GATE_DIR_JSON!",
+echo         "PYTHONUNBUFFERED": "1",
+echo         "REVIEW_GATE_MODE": "cursor_integration",
+echo         "PYTHONIOENCODING": "utf-8"
+echo       }
+echo     },
+echo     "review-gate-v2-fixed": {
+echo       "command": "!PYTHON_PATH_JSON!",
+echo       "args": ["!MCP_SCRIPT_PATH_FIXED_JSON!"],
 echo       "env": {
 echo         "PYTHONPATH": "!REVIEW_GATE_DIR_JSON!",
 echo         "PYTHONUNBUFFERED": "1",
@@ -346,6 +365,15 @@ if exist "!REVIEW_GATE_DIR!\review_gate_v2_mcp_fixed.py" (
     if exist "!CURSOR_MCP_FILE!" (
         if exist "!REVIEW_GATE_DIR!\venv" (
             %log_success% All components installed successfully%NC%
+            pause
+            exit /b 0
+        )
+    )
+)
+if exist "!REVIEW_GATE_DIR!\review_gate_v2_mcp.py" (
+    if exist "!CURSOR_MCP_FILE!" (
+        if exist "!REVIEW_GATE_DIR!\venv" (
+            %log_success% All components installed successfully, but using the fixed MCP server%NC%
             pause
             exit /b 0
         )

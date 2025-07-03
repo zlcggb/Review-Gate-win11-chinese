@@ -239,13 +239,16 @@ class ReviewGateServerFixed:
         return None
 
     async def _trigger_cursor_popup_fixed(self, data: dict) -> bool:
-        """修复版本的弹窗触发方法"""
+        """Create trigger file for Cursor extension with immediate activation and enhanced debugging (from original)"""
         try:
+            # Add delay before creating trigger to ensure readiness
+            await asyncio.sleep(0.1)  # Wait 100ms before trigger creation
+            
             trigger_file = Path(get_temp_path("review_gate_trigger.json"))
             
             trigger_data = {
                 "timestamp": datetime.now().isoformat(),
-                "system": "review-gate-v2-fixed",
+                "system": "review-gate-v2",
                 "editor": "cursor",
                 "data": data,
                 "pid": os.getpid(),
@@ -254,27 +257,98 @@ class ReviewGateServerFixed:
                 "immediate_activation": True
             }
             
-            logger.info(f"🎯 创建触发文件: {trigger_file}")
+            logger.info(f"🎯 CREATING trigger file with data: {json.dumps(trigger_data, indent=2)}")
             
-            # 修复：指定UTF-8编码写入文件
-            with open(trigger_file, 'w', encoding='utf-8') as f:
-                json.dump(trigger_data, f, indent=2, ensure_ascii=False)
+            # Write trigger file with immediate flush
+            trigger_file.write_text(json.dumps(trigger_data, indent=2))
             
+            # Verify file was written successfully
             if not trigger_file.exists():
-                logger.error(f"❌ 创建触发文件失败: {trigger_file}")
+                logger.error(f"❌ Failed to create trigger file: {trigger_file}")
                 return False
+                
+            try:
+                file_size = trigger_file.stat().st_size
+                if file_size == 0:
+                    logger.error(f"❌ Trigger file is empty: {trigger_file}")
+                    return False
+            except FileNotFoundError:
+                # File may have been consumed by the extension already - this is OK
+                logger.info(f"✅ Trigger file was consumed immediately by extension: {trigger_file}")
+                file_size = len(json.dumps(trigger_data, indent=2))
             
-            file_size = trigger_file.stat().st_size
-            logger.info(f"🔥 触发文件已创建: {trigger_file} ({file_size} bytes)")
+            # Force file system sync with retry
+            for attempt in range(3):
+                try:
+                    os.sync()
+                    break
+                except Exception as sync_error:
+                    logger.warning(f"⚠️ Sync attempt {attempt + 1} failed: {sync_error}")
+                    await asyncio.sleep(0.1)  # Wait 100ms between attempts
             
-            # 添加延迟让扩展处理
-            await asyncio.sleep(0.5)
+            logger.info(f"🔥 IMMEDIATE trigger created for Cursor: {trigger_file}")
+            logger.info(f"📁 Trigger file path: {trigger_file.absolute()}")
+            logger.info(f"📊 Trigger file size: {file_size} bytes")
+            
+            # Create multiple backup trigger files for reliability
+            await self._create_backup_triggers_fixed(data)
+            
+            # Add small delay to allow extension to process
+            await asyncio.sleep(0.2)  # Wait 200ms for extension to process
+            
+            # Note: Trigger file may have been consumed by extension already, which is good!
+            try:
+                if trigger_file.exists():
+                    logger.info(f"✅ Trigger file still exists: {trigger_file}")
+                else:
+                    logger.info(f"✅ Trigger file was consumed by extension: {trigger_file}")
+                    logger.info(f"🎯 This is expected behavior - extension is working properly")
+            except Exception as check_error:
+                logger.info(f"✅ Cannot check trigger file status (likely consumed): {check_error}")
+                logger.info(f"🎯 This is expected behavior - extension is working properly")
+            
+            # Check if extension might be watching
+            log_file = Path(get_temp_path("review_gate_v2.log"))
+            if log_file.exists():
+                logger.info(f"📝 MCP log file exists: {log_file}")
+            else:
+                logger.warning(f"⚠️ MCP log file missing: {log_file}")
+            
+            # Force log flush
+            for handler in logger.handlers:
+                if hasattr(handler, 'flush'):
+                    handler.flush()
             
             return True
             
         except Exception as e:
-            logger.error(f"❌ 创建触发文件失败: {e}")
+            logger.error(f"❌ CRITICAL: Failed to create Review Gate trigger: {e}")
+            import traceback
+            logger.error(f"🔍 Full traceback: {traceback.format_exc()}")
+            # Wait before returning failure
+            await asyncio.sleep(1.0)  # Wait 1 second before confirming failure
             return False
+
+    async def _create_backup_triggers_fixed(self, data: dict):
+        """Create backup trigger files for better reliability (from original)"""
+        try:
+            # Create multiple backup trigger files
+            for i in range(3):
+                backup_trigger = Path(get_temp_path(f"review_gate_trigger_{i}.json"))
+                backup_data = {
+                    "backup_id": i,
+                    "timestamp": datetime.now().isoformat(),
+                    "system": "review-gate-v2",
+                    "data": data,
+                    "mcp_integration": True,
+                    "immediate_activation": True
+                }
+                backup_trigger.write_text(json.dumps(backup_data, indent=2))
+            
+            logger.info("🔄 Backup trigger files created for reliability")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Backup trigger creation failed: {e}")
 
     async def run(self):
         """运行修复版本的服务器"""

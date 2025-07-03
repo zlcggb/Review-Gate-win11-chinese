@@ -6,8 +6,7 @@
       "env": {
         "PYTHONPATH": "/Users/YOUR_USERNAME/cursor-extensions/review-gate-v2",
         "PYTHONUNBUFFERED": "1",
-        "REVIEW_GATE_MODE": "cursor_integration",
-        "PYTHONIOENCODING": "utf-8"
+        "REVIEW_GATE_MODE": "cursor_integration"
       }
     }
   }
