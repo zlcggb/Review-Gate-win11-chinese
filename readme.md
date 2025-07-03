@@ -58,8 +58,8 @@ copy "%USERPROFILE%\.cursor\mcp.json" "%USERPROFILE%\.cursor\mcp.json.backup.man
         *   输入并选择：`Extensions: Install from VSIX...`。
         *   在弹出的文件选择对话框中，导航到并选择：`%USERPROFILE%\.cursor\cursor-extensions\review-gate-v2\review-gate-v2-2.7.3.vsix`。
         *   点击“确认”进行安装。
-4. **负责规则**：
-       *    负责 `review-gate-v2.mdc` 到项目规则 `.cursor\rules\`
+4. **复制规则**：
+       *    复制 `review-gate-v2.mdc` 到项目规则 `.cursor\rules\`,总是启用
 就这么简单！脚本会自动完成大部分配置工作。安装完成后，您可能需要**完全重启 Cursor IDE** 以确保所有更改生效。
 
 ### 🌐 代理配置（可选）
