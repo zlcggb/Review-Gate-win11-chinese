@@ -117,10 +117,10 @@ if not exist "!REVIEW_GATE_DIR!" mkdir "!REVIEW_GATE_DIR!"
 
 REM Copy MCP server files
 %log_progress% Copying MCP server files...%NC%
-if exist "%SCRIPT_DIR%\review_gate_v2_mcp.py" (
-    copy "%SCRIPT_DIR%\review_gate_v2_mcp.py" "!REVIEW_GATE_DIR!\" >nul
+if exist "%SCRIPT_DIR%\review_gate_v2_mcp_fixed.py" (
+    copy "%SCRIPT_DIR%\review_gate_v2_mcp_fixed.py" "!REVIEW_GATE_DIR!\" >nul
 ) else (
-    %log_error% MCP server file not found: %SCRIPT_DIR%\review_gate_v2_mcp.py%NC%
+    %log_error% MCP server file not found: %SCRIPT_DIR%\review_gate_v2_mcp_fixed.py%NC%
     pause
     exit /b 1
 )
@@ -129,6 +129,14 @@ if exist "%SCRIPT_DIR%\requirements_simple.txt" (
     copy "%SCRIPT_DIR%\requirements_simple.txt" "!REVIEW_GATE_DIR!\" >nul
 ) else (
     %log_error% Requirements file not found: %SCRIPT_DIR%\requirements_simple.txt%NC%
+    pause
+    exit /b 1
+)
+
+if exist "%SCRIPT_DIR%\review-gate-v2-2.7.3.vsix" (
+    copy "%SCRIPT_DIR%\review-gate-v2-2.7.3.vsix" "!REVIEW_GATE_DIR!\" >nul
+) else (
+    %log_error% Extension file not found: %SCRIPT_DIR%\review-gate-v2-2.7.3.vsix%NC%
     pause
     exit /b 1
 )
@@ -146,8 +154,11 @@ if errorlevel 1 (
 REM Activate virtual environment and install dependencies
 %log_progress% Installing Python dependencies...%NC%
 call "venv\Scripts\activate.bat"
-python -m pip install --upgrade pip
-python -m pip install -r requirements_simple.txt
+python -m pip install --upgrade pip 
+python -m pip install -r requirements_simple.txt 
+@REM add proxy
+@REM python -m pip install --upgrade pip --proxy=http://127.0.0.1:50470
+@REM python -m pip install -r requirements_simple.txt --proxy=http://127.0.0.1:50470
 call deactivate
 
 %log_success% Python environment created and dependencies installed%NC%
@@ -171,7 +182,7 @@ REM Create simplified MCP configuration without complex JSON parsing
 
 REM Create basic MCP configuration with Review Gate V2
 set "PYTHON_PATH=!REVIEW_GATE_DIR!\venv\Scripts\python.exe"
-set "MCP_SCRIPT_PATH=!REVIEW_GATE_DIR!\review_gate_v2_mcp.py"
+set "MCP_SCRIPT_PATH=!REVIEW_GATE_DIR!\review_gate_v2_mcp_fixed.py"
 
 REM Replace backslashes with forward slashes for JSON
 set "PYTHON_PATH_JSON=!PYTHON_PATH:\=/!"
@@ -188,7 +199,8 @@ echo       "args": ["!MCP_SCRIPT_PATH_JSON!"],
 echo       "env": {
 echo         "PYTHONPATH": "!REVIEW_GATE_DIR_JSON!",
 echo         "PYTHONUNBUFFERED": "1",
-echo         "REVIEW_GATE_MODE": "cursor_integration"
+echo         "REVIEW_GATE_MODE": "cursor_integration",
+echo         "PYTHONIOENCODING": "utf-8"
 echo       }
 echo     }
 echo   }
@@ -330,7 +342,7 @@ echo.
 
 REM Final verification
 %log_progress% Final verification...%NC%
-if exist "!REVIEW_GATE_DIR!\review_gate_v2_mcp.py" (
+if exist "!REVIEW_GATE_DIR!\review_gate_v2_mcp_fixed.py" (
     if exist "!CURSOR_MCP_FILE!" (
         if exist "!REVIEW_GATE_DIR!\venv" (
             %log_success% All components installed successfully%NC%

@@ -1,70 +1,165 @@
-[![3OtOp7R.th.png](https://iili.io/3OtOp7R.th.png)](https://freeimage.host/i/3OtOp7R)
-#  Review Gate for Cursor IDE ゲート
+# Review Gate V2 for Cursor IDE - Windows 11 中文优化版
 
-**Cursor**  would often drop the mic 🎤 way too early! I'd give it a complex task, it'd use maybe 5 of its ~25 available tool calls for that single "main request," then call it a day. Not only was that untapped AI power for that *single thought*, but making small follow-up tweaks meant starting a *new request*. Doing that too often, and my precious **~500 monthly requests** (you know the ones!) would burn up much faster than I liked :( 
+[![Review Gate V2](https://iili.io/3OtOp7R.th.png)](https://freeimage.host/i/3OtOp7R)
 
-**Presenting :The Review Gate – The "Turn Your 500 Cursor Requests into 2500!" Rule!**
-(Okay, maybe not *always* a perfect 5x, but you get the damn idea! 😉)
+## 📖 项目简介
 
-I cooked up this Global Rule for our beloved Cursor IDE to transform my (and your!) AI from a quick sprinter into an endurance marathon runner for complex ideas, all within the lifecycle of a *single main request*. I've basically told Cursor: "Hold up, *we're* not done with this request until *I* say we're done." Before it dares to end the conversation, it *must* open a special terminal for my (and your!) final, iterative commands. This lets us guide it to a much deeper completion *without burning another one of those valuable main requests*.
+**Review Gate V2** 是基于 [LakshmanTurlapati/Review-Gate](https://github.com/LakshmanTurlapati/Review-Gate) 项目修改的 Windows 11 中文优化版本。
 
-If each main request can now handle the depth of what might have taken 5 separate (and shallow) requests before, we're effectively **supercharging those ~500 monthly requests to feel like 2500 in terms of iterative power!** It’s about making every single one count, HARD.
+该工具可以让 **Cursor AI** 在完成任务后不立即结束对话，而是等待您的进一步指令，从而在单次请求中完成更深入的工作。这样可以将您的月度请求额度的价值最大化，让 500 次请求发挥出 2500 次的效果！
 
-## ✨ Key Awesomeness (What I Packed In)
+## ✨ 核心功能
 
-* **AI On MY Leash:** Makes the Cursor Agent wait for *my* (and your!) "go-ahead" via a terminal before it truly signs off on an *initial* request.
-* **Multiply Your Request Power:** Make *one* main request do the work of many! Instead of 5 new prompts (and 5 dings on your ~500 request counter!), use the Review Gate for 5 (or more!) iterative sub-prompts *within that single request's lifecycle and tool call budget*.
-* **Unlock Full Tool Call Potential:** I designed this to help us guide the AI to use more of its ~25 available tool calls for a *single complex idea* through those sub-prompts.
-* **Auto-Magic Script:** The rule itself tells Cursor how to **create the needed Python helper script** (`final_review_gate.py`) right in your project if it's not there. I wanted zero fuss for setup!
-* **Terminal Power-Ups:** You can feed sub-prompts directly into the script's terminal. Cursor *listens* to this, just like I observed it listens for errors.
-* **Cursor Native Feel:** I built this to leverage the way Cursor already interacts with sub-terminals for running code and fixing errors.
+* **🎯 智能等待机制**：AI 完成主要任务后会自动等待您的后续指令
+* **💬 多模态交互**：支持文本输入、语音转文字、图片上传等多种交互方式
+* **🔄 请求倍增器**：在单次请求生命周期内完成多轮深度工作
+* **🖥️ Windows 11 优化**：专为 Windows 11 系统和中文环境优化
+* **🎤 语音支持**：内置语音转文字功能，支持中文语音识别
+* **📷 图像上传**：支持图片上传和分析功能
 
-## 🛠️ The Guts (How I Made It Work, Super Simple)
+## 🎯 适用场景
 
-1.  **You (or I):** Give Cursor a task (this counts as 1 main request towards your ~500).
-2.  **Cursor AI:** Does its main job (coding, analysis, maybe a few tool calls from the ~25 for this request).
-3.  **Review Gate Kicks In (The Magic Part I Designed!):**
-    * AI checks/creates the `final_review_gate.py` script (I put this logic in the rule!).
-    * AI runs this script in a **sub-terminal within your Cursor chat area**.
-    * AI announces it's waiting for your input *there*.
-4.  **You (in the script's terminal):** Type quick follow-ups (e.g., "`Now add docstrings to all new functions.`") or type `TASK_COMPLETE`. Each of these is *not* a new main request.
-5.  **Cursor AI (listening to the terminal, as instructed by my rule):**
-    Reads your terminal input, acts on it (more coding, *more tool calls from the original budget*!), responds in the main chat, then waits for your *next* terminal input.
-6.  **Loop!** This continues, deepening the work on your original request, until you type `TASK_COMPLETE` in the script's terminal or **CTRL + C**.
+* **复杂编程任务**：需要多轮优化和调试的代码开发
+* **文档编写**：需要反复修改和完善的技术文档
+* **架构设计**：需要多次讨论和调整的系统设计
+* **代码审查**：深入的代码分析和优化建议
 
-## 🚀 Get It Going (Installation)
+## 🛠️ 工作原理
 
-It's a single, mighty rule I've put together. The Python script is **embedded inside it**.
+1. **任务启动**：您向 Cursor 提交一个复杂任务（计为 1 次主请求）
+2. **AI 执行**：Cursor AI 完成主要工作（使用部分工具调用额度）
+3. **Review Gate 激活**：AI 自动打开交互弹窗等待您的进一步指令
+4. **持续优化**：您可以通过文本、语音或图片提供后续指令
+5. **深度完成**：AI 根据您的指令继续完善工作（使用剩余工具调用额度）
+6. **循环迭代**：直到您输入 `TASK_COMPLETE` 或手动结束
 
-1.  **Copy THE Rule:** You'll need the "Review Gate" rule text that we I perfected.
-2.  **Cursor Settings:** Open your Cursor IDE settings.
-3.  **Global AI Rules:** Find the section for "Rules".
-4.  **Paste & Save:** Paste the entire rule. Save.
-5.  **Boom!** My Review Gate is now armed to make every main request count for *way* more.
+## 🚀 一键安装
 
-## 💡 Play Smart (My Tips & The "Why")
+### 📋 系统要求
 
-* **Why I built this hack:** To stop Cursor from ending too soon when I have iterative follow-ups for the *same original thought process*. It’s about turning a 5-tool-call answer into a 20-tool-call deep dive *if needed*, all while **making one of your ~500 monthly requests deliver the value of potentially five or more!**
-* **How to use it:** Just give Cursor a normal, complex task. The rule automatically engages at the end of the AI's primary work. Then, use that script terminal for your fine-tuning.
-* **Be Clear in Sub-Prompts:** I've found short, direct instructions in the script's terminal work best.
-* **`TASK_COMPLETE` is Your Exit:** Don't forget to type this in the script's terminal to let the AI finally rest (and free up that main request slot in its mind).
+- **操作系统**：Windows 11
+- **Python**：3.10 或更高版本
+- **Cursor IDE**：最新版本
+- **网络**：需要下载依赖包
 
-## ⚠️ Heads Up! (My Friendly Warnings)
+### ⚠️ 重要提醒
 
-* **EXPERIMENTAL!** This is a power-user move I cooked up. It works because we're very cleverly instructing the AI.
-* **AI WRITES A SCRIPT (As I Told It To!):** The rule instructs Cursor to create `final_review_gate.py` in your project root. **Understand the implications.** Ensure Cursor has permissions.
-* **PYTHON NEEDED:** Cursor needs to be able to run `python3` or `python` commands for my script.
-* **CURSOR UPDATES MIGHT CHANGE THINGS:** Future Cursor versions could affect how this rule behaves. What works today might need tweaks tomorrow!
-* **IT'S ON YOU:** This is my custom rule, but you're the one using it. Use responsibly!
+**在安装前请备份您的 `mcp.json` 配置文件！**
 
-## 🧑‍💻 About Me & This Rule
+安装脚本会覆盖 `%USERPROFILE%\.cursor\mcp.json` 文件。如果您已有其他 MCP 服务器配置，请先备份：
 
-This "Review Gate" rule was born from my own desire to truly partner with Cursor's AI and squeeze every ounce of value from my request quota. My goal? To make every interaction as deep and complete as possible—and ensure every available tool call for a big idea gets its chance to shine, making each of those ~500 requests count like gold! It was crafted through a detailed back-and-forth to make our Cursor Agent dance to a more precise and *efficient* tune.
+```powershell
+copy "%USERPROFILE%\.cursor\mcp.json" "%USERPROFILE%\.cursor\mcp.json.backup"
+```
 
-To connect with me or learn more about my work, visit: [www.audienclature.com](https://www.audienclature.com)
+### 🔧 安装步骤
+
+1. **下载本项目**到本地
+2. **运行安装脚本,双击打开即可**：
+   ```batch
+   install.bat
+   ```
+
+就这么简单！脚本会自动完成所有配置工作。
+
+### 🌐 代理配置（可选）
+
+如果您的网络环境需要代理，请在运行安装脚本前修改 `install.bat` 文件：
+
+找到以下被注释的行：
+
+```batch
+@REM python -m pip install --upgrade pip --proxy=http://127.0.0.1:50470
+@REM python -m pip install -r requirements_simple.txt --proxy=http://127.0.0.1:50470
+```
+
+取消注释并将 `50470` 改为您的代理端口：
+
+```batch
+python -m pip install --upgrade pip --proxy=http://127.0.0.1:您的端口
+python -m pip install -r requirements_simple.txt --proxy=http://127.0.0.1:您的端口
+```
+
+## 📁 安装内容
+
+安装完成后，以下组件将被安装到您的系统：
+
+- **MCP 服务器**：`%USERPROFILE%\cursor-extensions\review-gate-v2\`
+- **Python 虚拟环境**：包含所有必需的依赖包
+- **Cursor 扩展**：Review Gate V2 扩展 (.vsix)
+- **MCP 配置**：自动配置的 `mcp.json` 文件
+
+## 🧪 测试安装
+
+安装完成后，请按以下步骤测试：
+
+1. **完全重启 Cursor IDE**
+2. **测试手动触发**：按 `Ctrl+Shift+R`
+3. **测试 AI 调用**：向 Cursor AI 说："请使用 review_gate_chat 工具"
+
+## 🎤 语音功能使用
+
+1. 在弹出的 Review Gate 窗口中点击**麦克风图标**
+2. **清晰说话** 2-3 秒（支持中文）
+3. 点击**停止按钮**完成录音
+4. 系统会自动将语音转为文字
+
+## 📷 图像上传功能
+
+1. 在 Review Gate 窗口中点击**相机图标**
+2. 选择要上传的图片（支持 PNG、JPG、GIF 等格式）
+3. 图片将包含在您的响应中供 AI 分析
+
+## 🔧 故障排除
+
+### 常见问题
+
+**Q: 安装后无法找到 Review Gate 工具？**
+A: 请确保完全重启了 Cursor IDE，并检查扩展是否正确安装。
+
+**Q: 语音功能不工作？**
+A: 确保已安装 SoX，运行 `sox --version` 检查。
+
+**Q: MCP 服务器无法启动？**
+A: 检查 Python 环境是否正确安装，查看日志文件了解详细错误。
+
+### 日志文件位置
+
+```powershell
+# 查看日志文件位置
+python -c "import tempfile; print(tempfile.gettempdir())"
+# 然后查看 review_gate_v2.log 文件
+```
+
+### 手动安装扩展
+
+如果自动安装失败，请手动安装：
+
+1. 打开 Cursor IDE
+2. 按 `Ctrl+Shift+P`
+3. 输入 "Extensions: Install from VSIX"
+4. 选择：`%USERPROFILE%\cursor-extensions\review-gate-v2\review-gate-v2-2.7.3.vsix`
+
+## 📝 更新日志
+
+### Windows 11 中文优化版改进
+
+- ✅ 修复了中文编码问题，在mcp中添加"PYTHONIOENCODING": "utf-8",review_gate_v2_mcp_fixed.py中添加了"utf-8"
+- ✅ 优化了 Windows 11 兼容性
+- ✅ 添加了中文语音识别支持
+- ✅ 改进了安装脚本的用户友好性
+- ✅ 增强了错误处理和日志记录
+
+## 🙏 致谢
+
+本项目基于 [Lakshman Turlapati](https://github.com/LakshmanTurlapati) 的 [Review-Gate](https://github.com/LakshmanTurlapati/Review-Gate) 项目开发。
+
+感谢原作者的创新想法和开源贡献！
+
+## 📄 许可证
+
+本项目遵循原项目的许可证条款。
 
 ---
 
-🎁 **For a surprise, please look at the V2 directory!**
-
-*Happy (and extended) coding with Cursor! May your AI always await your final command, your tool calls be plentifully used, and your monthly requests feel like they last forever!* ✨
+🎯 **让您的 Cursor AI 请求发挥最大价值，享受深度交互编程体验！** ✨
