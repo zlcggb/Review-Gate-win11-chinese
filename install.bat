@@ -184,54 +184,11 @@ if exist "!CURSOR_MCP_FILE!" (
     copy "!CURSOR_MCP_FILE!" "!BACKUP_FILE!" >nul
 )
 
-REM Create simplified MCP configuration without complex JSON parsing
-%log_progress% Creating MCP configuration...%NC%
-
-REM Create basic MCP configuration with Review Gate V2
-set "PYTHON_PATH=!REVIEW_GATE_DIR!\venv\Scripts\python.exe"
-set "MCP_SCRIPT_PATH=!REVIEW_GATE_DIR!\review_gate_v2_mcp.py"
-set "MCP_SCRIPT_PATH_FIXED=!REVIEW_GATE_DIR!\review_gate_v2_mcp_fixed.py"
-
-REM Replace backslashes with forward slashes for JSON
-set "PYTHON_PATH_JSON=!PYTHON_PATH:\=/!"
-set "MCP_SCRIPT_PATH_JSON=!MCP_SCRIPT_PATH:\=/!"
-set "MCP_SCRIPT_PATH_FIXED_JSON=!MCP_SCRIPT_PATH_FIXED:\=/!"
-set "REVIEW_GATE_DIR_JSON=!REVIEW_GATE_DIR:\=/!"
-
-REM Create MCP configuration file directly
-(
-echo {
-echo   "mcpServers": {
-echo     "review-gate-v2": {
-echo       "command": "!PYTHON_PATH_JSON!",
-echo       "args": ["!MCP_SCRIPT_PATH_JSON!"],
-echo       "env": {
-echo         "PYTHONPATH": "!REVIEW_GATE_DIR_JSON!",
-echo         "PYTHONUNBUFFERED": "1",
-echo         "REVIEW_GATE_MODE": "cursor_integration",
-echo         "PYTHONIOENCODING": "utf-8"
-echo       }
-echo     },
-echo     "review-gate-v2-fixed": {
-echo       "command": "!PYTHON_PATH_JSON!",
-echo       "args": ["!MCP_SCRIPT_PATH_FIXED_JSON!"],
-echo       "env": {
-echo         "PYTHONPATH": "!REVIEW_GATE_DIR_JSON!",
-echo         "PYTHONUNBUFFERED": "1",
-echo         "REVIEW_GATE_MODE": "cursor_integration",
-echo         "PYTHONIOENCODING": "utf-8"
-echo       }
-echo     }
-echo   }
-echo }
-) > "!CURSOR_MCP_FILE!"
-
-if exist "!CURSOR_MCP_FILE!" (
-    %log_success% MCP configuration updated successfully%NC%
-    %log_header% Total MCP servers configured: 1%NC%
-    %log_step%   - review-gate-v2 (Review Gate V2)%NC%
-) else (
-    %log_error% Failed to create MCP configuration%NC%
+REM Call Python script to merge MCP configuration
+%log_progress% Calling Python script to merge MCP configuration...%NC%
+cd /d "%SCRIPT_DIR%" && !PYTHON_CMD! merge_mcp_config.py "!REVIEW_GATE_DIR!"
+if errorlevel 1 (
+    %log_error% Failed to merge MCP configuration using Python script%NC%
     if exist "!BACKUP_FILE!" (
         %log_progress% Restoring from backup...%NC%
         copy "!BACKUP_FILE!" "!CURSOR_MCP_FILE!" >nul
@@ -241,6 +198,15 @@ if exist "!CURSOR_MCP_FILE!" (
         pause
         exit /b 1
     )
+)
+
+if exist "!CURSOR_MCP_FILE!" (
+    %log_success% MCP configuration updated successfully%NC%
+    %log_header% Total MCP servers configured: 2 (review-gate-v2, review-gate-v2-fixed)%NC%
+) else (
+    %log_error% Failed to create MCP configuration%NC%
+    pause
+    exit /b 1
 )
 
 
@@ -260,17 +226,24 @@ if exist "!EXTENSION_FILE!" (
     set "EXTENSION_INSTALLED=false"
     set "CURSOR_CMD="
     
-    REM Check for cursor command in various locations
-    if exist "%ProgramFiles%\Cursor\resources\app\bin\cursor.cmd" (
-        set "CURSOR_CMD=%ProgramFiles%\Cursor\resources\app\bin\cursor.cmd"
-    ) else if exist "%LOCALAPPDATA%\Programs\cursor\resources\app\bin\cursor.cmd" (
-        set "CURSOR_CMD=%LOCALAPPDATA%\Programs\cursor\resources\app\bin\cursor.cmd"
-    ) else if exist "%ProgramFiles(x86)%\Cursor\resources\app\bin\cursor.cmd" (
-        set "CURSOR_CMD=%ProgramFiles(x86)%\Cursor\resources\app\bin\cursor.cmd"
+    REM First, try to find cursor.cmd in PATH
+    for /f "delims=" %%i in ('where /q cursor.cmd ^>nul 2^>^&1 ^&^& where cursor.cmd') do (
+        set "CURSOR_CMD=%%i"
+    )
+    
+    if not defined CURSOR_CMD (
+        REM If not found in PATH, check common installation locations
+        if exist "%ProgramFiles%\Cursor\resources\app\bin\cursor.cmd" (
+            set "CURSOR_CMD=%ProgramFiles%\Cursor\resources\app\bin\cursor.cmd"
+        ) else if exist "%LOCALAPPDATA%\Programs\cursor\resources\app\bin\cursor.cmd" (
+            set "CURSOR_CMD=%LOCALAPDATA%\Programs\cursor\resources\app\bin\cursor.cmd"
+        ) else if exist "%ProgramFiles(x86)%\Cursor\resources\app\bin\cursor.cmd" (
+            set "CURSOR_CMD=%ProgramFiles(x86)%\Cursor\resources\app\bin\cursor.cmd"
+        )
     )
     
     if defined CURSOR_CMD (
-        %log_progress% Attempting automated extension installation...%NC%
+        %log_progress% Attempting automated extension installation using: !CURSOR_CMD!%NC%
         "!CURSOR_CMD!" --install-extension "!EXTENSION_FILE!" >nul 2>&1
         if !errorlevel! equ 0 (
             %log_success% Extension installed automatically via command line%NC%

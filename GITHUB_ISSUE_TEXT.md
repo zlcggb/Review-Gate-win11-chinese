@@ -14,6 +14,7 @@ graph LR
         A2["Message Relay Fails"]
         A3["Chinese Encoding Issues"]
         A4["Popup Unreliable"]
+        A5["MCP Config Overwrite"]
     end
     
     subgraph "Solutions Applied"
@@ -21,21 +22,25 @@ graph LR
         B2["Lenient trigger_id Matching"]
         B3["UTF-8 Encoding Forced"]
         B4["Enhanced File Sync"]
+        B5["MCP Auto-Merge"]
     end
     
     A1 --> B1
     A2 --> B2
     A3 --> B3
     A4 --> B4
+    A5 --> B5
     
     style A1 fill:#ffebee
     style A2 fill:#ffebee
     style A3 fill:#ffebee
     style A4 fill:#ffebee
+    style A5 fill:#ffebee
     style B1 fill:#e8f5e8
     style B2 fill:#e8f5e8
     style B3 fill:#e8f5e8
     style B4 fill:#e8f5e8
+    style B5 fill:#e8f5e8
 ```
 
 ## Critical Issues Fixed
@@ -63,6 +68,7 @@ graph LR
 - Enhanced temporary file management for Windows permission system
 - Chinese speech recognition support
 - Comprehensive error logging and recovery mechanisms
+- **MCP Configuration Auto-Merge**: The `install.bat` script now intelligently merges `mcp.json` configurations, safely adding Review Gate's services without overwriting existing MCP setups.
 
 ## Testing Results
 ✅ Installation completes successfully without crashes  

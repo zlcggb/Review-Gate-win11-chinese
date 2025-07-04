@@ -82,9 +82,11 @@ graph TD
 
 ### ⚠️ 重要提醒
 
-**在安装前，强烈建议手动备份您的 `mcp.json` 配置文件！**
+**现在安装脚本会智能地合并您的 `mcp.json` 配置文件！**
 
-安装脚本会覆盖 `%USERPROFILE%\.cursor\mcp.json` 文件。虽然脚本会自动创建带有时间戳的备份文件（例如 `mcp.json.backup.20231026_103000`），但为确保数据安全和您现有 MCP 配置的完整性，仍建议您在运行安装脚本前手动备份：
+您无需再手动备份 `mcp.json`，安装脚本会自动检测并安全地将 Review Gate V2 的 MCP 服务添加到您现有的 `%USERPROFILE%\.cursor\mcp.json` 文件中，而不会覆盖您之前配置的其他 MCP 服务。
+
+尽管如此，为了极致的数据安全，您仍然可以选择在运行安装脚本前手动备份（可选步骤）：
 
 ```powershell
 copy "%USERPROFILE%\.cursor\mcp.json" "%USERPROFILE%\.cursor\mcp.json.backup.manual"
@@ -146,6 +148,70 @@ python -m pip install -r requirements_simple.txt --proxy=http://127.0.0.1:您的
 - **Cursor 扩展**：Review Gate V2 扩展 (`.vsix` 文件) 将被安装到 Cursor IDE 中。
 - **MCP 配置**：您的 Cursor 配置文件 `%USERPROFILE%\.cursor\mcp.json` 将被自动更新，以注册 Review Gate V2 的 MCP 服务。
 
+#### 💡 `mcp.json` 合并示例
+
+以下示例展示了安装脚本如何智能地合并 `mcp.json` 配置。
+
+**原有 `mcp.json` 配置 (运行安装脚本前)**：
+
+```json
+{
+  "mcpServers": {
+    "browser-tools-mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@agentdeskai/browser-tools-mcp@1.2.0"
+      ]
+    }
+  }
+}
+```
+
+**合并后的 `mcp.json` 配置 (运行安装脚本后)**：
+
+```json
+{
+  "mcpServers": {
+    "browser-tools-mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@agentdeskai/browser-tools-mcp@1.2.0"
+      ]
+    },
+    "review-gate-v2": {
+      "command": "YOUR_INSTALLATION_PATH/venv/Scripts/python.exe",
+      "args": [
+        "YOUR_INSTALLATION_PATH/review_gate_v2_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "YOUR_INSTALLATION_PATH",
+        "PYTHONUNBUFFERED": "1",
+        "REVIEW_GATE_MODE": "cursor_integration",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    },
+    "review-gate-v2-fixed": {
+      "command": "YOUR_INSTALLATION_PATH/venv/Scripts/python.exe",
+      "args": [
+        "YOUR_INSTALLATION_PATH/review_gate_v2_mcp_fixed.py"
+      ],
+      "env": {
+        "PYTHONPATH": "YOUR_INSTALLATION_PATH",
+        "PYTHONUNBUFFERED": "1",
+        "REVIEW_GATE_MODE": "cursor_integration",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}
+```
+
 ## 🧪 测试安装
 
 安装完成后，请按以下步骤验证您的安装是否成功：
@@ -160,6 +226,8 @@ python -m pip install -r requirements_simple.txt --proxy=http://127.0.0.1:您的
    * 确认 Review Gate 弹窗是否正常弹出，并且您在弹窗中输入的消息能被 AI 正常接收并回显在聊天框中。
 
 ## 🎤 语音功能使用
+
+**重要提示：为了确保MCP服务器的稳定运行，语音识别功能已被禁用。您可以通过文本和图片与AI进行交互。**
 
 Review Gate V2 支持语音输入转文字 (Speech-to-Text) 功能：
 

@@ -82,9 +82,11 @@ graph TD
 
 ### ⚠️ Important Notice
 
-**It is strongly recommended to manually backup your `mcp.json` configuration file before installation!**
+**The installation script now intelligently merges your `mcp.json` configuration!**
 
-The installation script will overwrite the `%USERPROFILE%\.cursor\mcp.json` file. Although the script automatically creates timestamped backup files (e.g., `mcp.json.backup.20231026_103000`), to ensure data security and integrity of your existing MCP configuration, it is still recommended to manually backup before running the installation script:
+You no longer need to manually backup `mcp.json`. The installation script will automatically detect and safely add Review Gate V2's MCP services to your existing `%USERPROFILE%\.cursor\mcp.json` file, without overwriting any other MCP services you may have configured previously.
+
+Nevertheless, for ultimate data safety, you can still choose to manually back up before running the installation script (optional step):
 
 ```powershell
 copy "%USERPROFILE%\.cursor\mcp.json" "%USERPROFILE%\.cursor\mcp.json.backup.manual"
@@ -146,6 +148,70 @@ After installation, the following main components will be installed on your syst
 - **Cursor Extension**: Review Gate V2 extension (`.vsix` file) will be installed in Cursor IDE.
 - **MCP Configuration**: Your Cursor configuration file `%USERPROFILE%\.cursor\mcp.json` will be automatically updated to register Review Gate V2's MCP service.
 
+#### 💡 `mcp.json` Merge Example
+
+Below is an example illustrating how the installation script intelligently merges the `mcp.json` configuration.
+
+**Original `mcp.json` Configuration (Before running installation script)**:
+
+```json
+{
+  "mcpServers": {
+    "browser-tools-mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@agentdeskai/browser-tools-mcp@1.2.0"
+      ]
+    }
+  }
+}
+```
+
+**Merged `mcp.json` Configuration (After running installation script)**:
+
+```json
+{
+  "mcpServers": {
+    "browser-tools-mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@agentdeskai/browser-tools-mcp@1.2.0"
+      ]
+    },
+    "review-gate-v2": {
+      "command": "YOUR_INSTALLATION_PATH/venv/Scripts/python.exe",
+      "args": [
+        "YOUR_INSTALLATION_PATH/review_gate_v2_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "YOUR_INSTALLATION_PATH",
+        "PYTHONUNBUFFERED": "1",
+        "REVIEW_GATE_MODE": "cursor_integration",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    },
+    "review-gate-v2-fixed": {
+      "command": "YOUR_INSTALLATION_PATH/venv/Scripts/python.exe",
+      "args": [
+        "YOUR_INSTALLATION_PATH/review_gate_v2_mcp_fixed.py"
+      ],
+      "env": {
+        "PYTHONPATH": "YOUR_INSTALLATION_PATH",
+        "PYTHONUNBUFFERED": "1",
+        "REVIEW_GATE_MODE": "cursor_integration",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}
+```
+
 ## 🧪 Testing Installation
 
 After installation, please verify your installation success by following these steps:
@@ -160,6 +226,8 @@ After installation, please verify your installation success by following these s
    - Confirm whether the Review Gate popup appears normally and whether messages you input in the popup can be normally received and echoed by AI in the chat box.
 
 ## 🎤 Voice Function Usage
+
+**Important Note: To ensure stable operation of the MCP server, voice recognition functionality has been disabled. You can interact with the AI via text and images.**
 
 Review Gate V2 supports Speech-to-Text functionality:
 

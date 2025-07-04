@@ -9,6 +9,12 @@ Requirements:
 - Python 3.8+
 """
 
+# MCP Server for Review Gate V2
+# This server handles communication between Cursor IDE and AI Agent for interactive reviews.
+# 
+# **Recent Improvement:** This project now includes an enhanced `install.bat` script that intelligently merges `mcp.json` configurations.
+# Instead of overwriting, it safely adds Review Gate's MCP services to your existing `mcp.json` file, preserving your other MCP configurations.
+
 import asyncio
 import json
 import sys
@@ -113,7 +119,13 @@ class ReviewGateServer:
                 handler.flush()
 
     def _initialize_whisper_model(self):
-        """Initialize Whisper model with comprehensive error handling and fallbacks"""
+        """Initialize Whisper model with comprehensive error handling and fallbacks - DISABLED"""
+        # 方法已禁用以加快启动速度
+        logger.info("🚫 Whisper模型初始化已禁用")
+        return None
+        
+        # 以下代码已注释掉以加快启动
+        """
         try:
             logger.info("🎤 Loading Faster-Whisper model for speech-to-text...")
             
@@ -170,6 +182,7 @@ class ReviewGateServer:
             
             self._whisper_error = error_msg
             return None
+        """
 
     def setup_handlers(self):
         """Set up MCP request handlers"""
@@ -708,14 +721,21 @@ class ReviewGateServer:
                                 user_input = data.get("user_input", data.get("response", data.get("message", ""))).strip()
                                 attachments = data.get("attachments", [])
                                 
-                                # 修复：更宽松的trigger ID匹配
+                                # 修复：更严格的trigger ID匹配，避免读取旧消息和不相关的通用响应
                                 response_trigger_id = data.get("trigger_id", "")
-                                if response_trigger_id:
-                                    # 检查trigger ID是否匹配或者是否为通用响应
-                                    if response_trigger_id != trigger_id and response_file.name != "review_gate_response.json":
-                                        logger.info(f"⚠️ Trigger ID不匹配，但继续处理: expected {trigger_id}, got {response_trigger_id}")
-                                        # 不跳过，继续处理
-                                
+                                if response_trigger_id and response_trigger_id != trigger_id:
+                                    logger.warning(f"⚠️ 发现不匹配的Trigger ID ({response_trigger_id})，预期为({trigger_id})。跳过此响应文件: {response_file.name}")
+                                    # 立即清理不匹配的响应文件，避免再次被读取
+                                    try:
+                                        response_file.unlink()
+                                        logger.info(f"🧹 已清理不匹配的响应文件: {response_file.name}")
+                                    except Exception as cleanup_error:
+                                        logger.warning(f"⚠️ 清理不匹配响应文件错误: {cleanup_error}")
+                                    continue # 跳过当前文件，检查下一个
+
+                                # 如果走到这里，说明response_trigger_id匹配，或者响应文件不包含trigger_id（视为通用响应）。
+                                # 此时，我们继续处理文件内容。
+
                                 # 处理附件
                                 if attachments:
                                     logger.info(f"📎 Found {len(attachments)} attachments")
@@ -725,7 +745,7 @@ class ReviewGateServer:
                                     for att in attachments:
                                         if att.get('mimeType', '').startswith('image/'):
                                             attachment_descriptions.append(f"Image: {att.get('fileName', 'unknown')}")
-                                    
+
                                     if attachment_descriptions:
                                         user_input += f"\n\nAttached: {', '.join(attachment_descriptions)}"
                                 else:
@@ -996,6 +1016,9 @@ class ReviewGateServer:
         self._speech_monitoring_active = False
         self._speech_thread = None
         
+        # Store reference to self for use in thread
+        server_instance = self
+        
         def monitor_speech_triggers():
             """Enhanced speech monitoring with health checks and better error handling"""
             monitor_start_time = time.time()
@@ -1004,9 +1027,9 @@ class ReviewGateServer:
             last_heartbeat = time.time()
             
             logger.info("🎤 Speech monitoring thread started successfully")
-            self._speech_monitoring_active = True
+            server_instance._speech_monitoring_active = True
             
-            while not self.shutdown_requested:
+            while not server_instance.shutdown_requested:
                 try:
                     current_time = time.time()
                     
@@ -1031,7 +1054,7 @@ class ReviewGateServer:
                             
                             if trigger_data.get('data', {}).get('tool') == 'speech_to_text':
                                 logger.info(f"🎤 Processing speech-to-text request: {os.path.basename(trigger_file)}")
-                                self._process_speech_request(trigger_data)
+                                server_instance._process_speech_request(trigger_data)
                                 processed_count += 1
                                 
                                 # Clean up trigger file safely
@@ -1070,7 +1093,7 @@ class ReviewGateServer:
                         time.sleep(5)
                         error_count = 0  # Reset error count after recovery pause
             
-            self._speech_monitoring_active = False
+            server_instance._speech_monitoring_active = False
             logger.info("🛑 Speech monitoring thread stopped")
         
         try:

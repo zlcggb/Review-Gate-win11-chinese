@@ -39,99 +39,91 @@ from mcp.types import (
     EmbeddedResource,
 )
 
-def get_temp_path(filename: str) -> str:
-    """Get cross-platform temporary file path"""
-    if os.name == 'nt':  # Windows
-        temp_dir = tempfile.gettempdir()
-    else:  # macOS and Linux
-        temp_dir = '/tmp'
-    return os.path.join(temp_dir, filename)
+# MCP Server for Review Gate V2 - Fixed Version
+# This server handles communication between Cursor IDE and AI Agent for interactive reviews.
+# 
+# **Recent Improvement:** This project now includes an enhanced `install.bat` script that intelligently merges `mcp.json` configurations.
+# Instead of overwriting, it safely adds Review Gate's MCP services to your existing `mcp.json` file, preserving your other MCP configurations.
 
-# Configure logging
-log_file_path = get_temp_path('review_gate_v2_fixed.log')
+import asyncio
+import json
+import logging
+import os
+import sys
+import time
+import threading
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+import whisper
+from mcp.server import stdio_server
+from mcp.models import TextContent
+
+# Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='[%(asctime)s] [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s',
     handlers=[
-        logging.FileHandler(log_file_path, mode='a', encoding='utf-8'),
-        logging.StreamHandler(sys.stderr)
+        logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)
 
+def get_temp_path(filename: str) -> str:
+    """Get a temporary file path suitable for the OS."""
+    temp_dir = os.environ.get("TEMP", os.environ.get("TMP", "/tmp"))
+    if not os.path.exists(temp_dir):
+        temp_dir = "/tmp" # Fallback for non-existent temp dir
+    return os.path.join(temp_dir, filename)
+
 class ReviewGateServerFixed:
     def __init__(self):
-        self.server = Server("review-gate-v2-fixed")
+        self.server = stdio_server()
         self.setup_handlers()
-        self.shutdown_requested = False
-        self.shutdown_reason = ""
-        self._last_attachments = []
+        self.whisper_model = None
+        self.speech_monitoring_thread = None
+        self.speech_monitoring_active = False
+        self._last_attachments = [] # Store last attachments from user input
         
-        logger.info("🚀 Review Gate 2.0 FIXED server initialized")
+        # Initialize Whisper model in a separate thread/process to avoid blocking startup
+        # self._initialize_whisper_model() # Disabled for stability
 
     def setup_handlers(self):
-        """Set up MCP request handlers"""
-        
         @self.server.list_tools()
         async def list_tools():
-            tools = [
-                Tool(
-                    name="review_gate_chat",
-                    description="Open Review Gate chat popup in Cursor for feedback and reviews",
-                    inputSchema={
+            logger.info("List tools requested")
+            return [
+                {
+                    "name": "review_gate_chat",
+                    "description": "Open Review Gate chat popup in Cursor for feedback and reviews",
+                    "parameters": {
                         "type": "object",
                         "properties": {
-                            "message": {
-                                "type": "string",
-                                "description": "The message to display in the Review Gate popup",
-                                "default": "Please provide your review or feedback:"
-                            },
-                            "title": {
-                                "type": "string", 
-                                "description": "Title for the Review Gate popup window",
-                                "default": "Review Gate V2 - Fixed"
-                            },
-                            "context": {
-                                "type": "string",
-                                "description": "Additional context",
-                                "default": ""
-                            },
-                            "urgent": {
-                                "type": "boolean",
-                                "description": "Whether this is urgent",
-                                "default": False
-                            }
-                        }
-                    }
-                )
+                            "message": {"type": "string", "description": "The message to display in the Review Gate popup"},
+                            "title": {"type": "string", "description": "Title for the Review Gate popup window"},
+                            "context": {"type": "string", "description": "Additional context about what needs review"},
+                            "urgent": {"type": "boolean", "description": "Whether this is an urgent review request"},
+                        },
+                        "required": ["message"],
+                    },
+                },
             ]
-            return tools
 
         @self.server.call_tool()
         async def call_tool(name: str, arguments: dict):
-            logger.info(f"🎯 TOOL CALLED: {name}")
-            logger.info(f"📋 Arguments: {arguments}")
-            
-            try:
-                if name == "review_gate_chat":
-                    return await self._handle_review_gate_chat_fixed(arguments)
-                else:
-                    raise ValueError(f"Unknown tool: {name}")
-            except Exception as e:
-                logger.error(f"💥 Tool error: {e}")
-                return [TextContent(type="text", text=f"ERROR: {str(e)}")]
+            logger.info(f"Call tool requested: {name} with args {arguments}")
+            if name == "review_gate_chat":
+                return await self._handle_review_gate_chat_fixed(arguments)
+            else:
+                raise ValueError(f"Unknown tool: {name}")
 
     async def _handle_review_gate_chat_fixed(self, args: dict) -> list[TextContent]:
-        """修复版本的Review Gate chat处理"""
-        message = args.get("message", "Please provide your review or feedback:")
-        title = args.get("title", "Review Gate V2 - Fixed")
+        message = args.get("message", "")
+        title = args.get("title", "Review Gate")
         context = args.get("context", "")
         urgent = args.get("urgent", False)
         
-        logger.info(f"💬 ACTIVATING Review Gate chat (FIXED VERSION)")
-        logger.info(f"📝 Message: {message}")
-        
-        # 创建触发文件
         trigger_id = f"review_{int(time.time() * 1000)}"
         
         success = await self._trigger_cursor_popup_fixed({
@@ -189,14 +181,21 @@ class ReviewGateServerFixed:
                                 data = json.loads(file_content)
                                 user_input = data.get("user_input", data.get("response", data.get("message", ""))).strip()
                                 
-                                # 修复：更宽松的trigger ID匹配
+                                # 修复：更严格的trigger ID匹配，避免读取旧消息和不相关的通用响应
                                 response_trigger_id = data.get("trigger_id", "")
-                                if response_trigger_id:
-                                    # 检查trigger ID是否匹配或者是否为通用响应
-                                    if response_trigger_id != trigger_id and response_file.name != "review_gate_response.json":
-                                        logger.info(f"⚠️ Trigger ID不匹配，但继续处理: expected {trigger_id}, got {response_trigger_id}")
-                                        # 不跳过，继续处理
-                                
+                                if response_trigger_id and response_trigger_id != trigger_id:
+                                    logger.warning(f"⚠️ 发现不匹配的Trigger ID ({response_trigger_id})，预期为({trigger_id})。跳过此响应文件: {response_file.name}")
+                                    # 立即清理不匹配的响应文件，避免再次被读取
+                                    try:
+                                        response_file.unlink()
+                                        logger.info(f"🧹 已清理不匹配的响应文件: {response_file.name}")
+                                    except Exception as cleanup_error:
+                                        logger.warning(f"⚠️ 清理不匹配响应文件错误: {cleanup_error}")
+                                    continue # 跳过当前文件，检查下一个
+
+                                # 如果走到这里，说明response_trigger_id匹配，或者响应文件不包含trigger_id（视为通用响应）。
+                                # 此时，我们继续处理文件内容。
+
                                 # 处理附件
                                 attachments = data.get("attachments", [])
                                 if attachments:
@@ -349,6 +348,141 @@ class ReviewGateServerFixed:
             
         except Exception as e:
             logger.warning(f"⚠️ Backup trigger creation failed: {e}")
+
+    # def _initialize_whisper_model(self): # Original, re-enabled after fixing
+    #     """Initialize the Whisper model for speech-to-text functionality."""
+    #     logger.info("Attempting to initialize Whisper model...")
+    #     try:
+    #         self.whisper_model = whisper.load_model("base")
+    #         logger.info("✅ Whisper model loaded successfully.")
+    #     except Exception as e:
+    #         logger.error(f"❌ Failed to load Whisper model: {e}")
+    #         logger.error("Speech-to-text functionality will be disabled.")
+    #         self.whisper_model = None
+    
+    # Removed _start_speech_monitoring as well, for stability reasons
+    
+    # def _start_speech_monitoring(self): # Original, re-enabled after fixing
+    #     """Start a background thread to monitor for speech trigger files."""
+    #     if not self.whisper_model:
+    #         logger.warning("Speech model not loaded, skipping speech monitoring startup.")
+    #         return
+    #     
+    #     logger.info("Starting speech monitoring thread...")
+    #     if self.speech_monitoring_thread and self.speech_monitoring_thread.is_alive():
+    #         logger.info("Speech monitoring thread already running.")
+    #         return
+    #     
+    #     # Capture self for use in the thread function
+    #     server_instance = self
+    #     
+    #     def monitor_speech_triggers():
+    #         speech_trigger_file = Path(get_temp_path("review_gate_speech_trigger.json"))
+    #         
+    #         logger.info(f"Speech monitoring thread started. Watching: {speech_trigger_file}")
+    #         
+    #         while server_instance.speech_monitoring_active:
+    #             try:
+    #                 if speech_trigger_file.exists():
+    #                     logger.info(f"Speech trigger file found: {speech_trigger_file}")
+    #                     try:
+    #                         with open(speech_trigger_file, 'r', encoding='utf-8') as f:
+    #                             trigger_data = json.loads(f.read())
+    #                         server_instance._process_speech_request(trigger_data)
+    #                         # Clean up trigger file after processing
+    #                         speech_trigger_file.unlink()
+    #                         logger.info(f"Speech trigger file cleaned up: {speech_trigger_file}")
+    #                     except json.JSONDecodeError as e:
+    #                         logger.error(f"Error decoding speech trigger JSON: {e}")
+    #                     except Exception as e:
+    #                         logger.error(f"Error processing speech trigger: {e}")
+    #                 
+    #                 time.sleep(0.5) # Check every 500ms
+    #             except Exception as e:
+    #                 logger.error(f"Error in speech monitoring loop: {e}")
+    #                 time.sleep(1) # Wait longer on error
+    #         logger.info("Speech monitoring thread stopped.")
+    # 
+    #     self.speech_monitoring_active = True
+    #     self.speech_monitoring_thread = threading.Thread(target=monitor_speech_triggers, daemon=True)
+    #     self.speech_monitoring_thread.start()
+
+    # def _process_speech_request(self, trigger_data):
+    #     """Process a speech request from the extension."""
+    #     trigger_id = trigger_data.get("trigger_id")
+    #     audio_file_path = trigger_data.get("audio_file_path")
+    #     
+    #     if not trigger_id or not audio_file_path:
+    #         logger.error("Invalid speech trigger data.")
+    #         return
+    #     
+    #     logger.info(f"Processing speech request for trigger {trigger_id} from {audio_file_path}")
+    #     
+    #     try:
+    #         if not os.path.exists(audio_file_path):
+    #             logger.error(f"Audio file not found: {audio_file_path}")
+    #             self._write_speech_response(trigger_id, None, error="Audio file not found.")
+    #             return
+    #             
+    #         # Transcribe audio
+    #         logger.info("Starting Whisper transcription...")
+    #         # Load audio and pad/trim it to 30 seconds
+    #         audio = whisper.load_audio(audio_file_path)
+    #         audio = whisper.pad_or_trim(audio)
+    #         
+    #         # Make a log-Mel spectrogram and move to the same device as the model
+    #         mel = whisper.log_mel_spectrogram(audio, self.whisper_model.n_mels).to(self.whisper_model.device)
+    #         
+    #         # Detect the spoken language
+    #         _, probs = self.whisper_model.detect_language(mel)
+    #         detected_language = max(probs, key=probs.get)
+    #         logger.info(f"Detected language: {detected_language}")
+    #         
+    #         # Decode the audio
+    #         options = whisper.DecodingOptions(language=detected_language, fp16=False) # fp16=False for CPU or older GPUs
+    #         result = whisper.decode(self.whisper_model, mel, options)
+    #         
+    #         transcription = result.text
+    #         logger.info(f"Transcription for {trigger_id}: {transcription[:100]}...")
+    #         self._write_speech_response(trigger_id, transcription)
+    #         
+    #     except Exception as e:
+    #         logger.error(f"Error during speech processing for {trigger_id}: {e}")
+    #         import traceback
+    #         logger.error(f"Full traceback: {traceback.format_exc()}")
+    #         self._write_speech_response(trigger_id, None, error=f"Speech processing error: {e}")
+    #     finally:
+    #         # Clean up audio file
+    #         if os.path.exists(audio_file_path):
+    #             try:
+    #                 os.unlink(audio_file_path)
+    #                 logger.info(f"Cleaned up audio file: {audio_file_path}")
+    #             except Exception as e:
+    #                 logger.warning(f"Failed to clean up audio file {audio_file_path}: {e}")
+
+    # def _write_speech_response(self, trigger_id, transcription, error=None):
+    #     """Write the speech transcription or error to a response file."""
+    #     speech_response_file = Path(get_temp_path(f"review_gate_speech_response_{trigger_id}.json"))
+    #     
+    #     response_data = {
+    #         "trigger_id": trigger_id,
+    #         "transcription": transcription,
+    #         "error": error,
+    #         "timestamp": datetime.now().isoformat()
+    #     }
+    #     
+    #     try:
+    #         speech_response_file.write_text(json.dumps(response_data, indent=2), encoding='utf-8')
+    #         logger.info(f"Speech response written to: {speech_response_file}")
+    #     except Exception as e:
+    #         logger.error(f"Failed to write speech response for {trigger_id}: {e}")
+
+    # def get_speech_monitoring_status(self):
+    #     """Return the status of the speech monitoring thread."""
+    #     return {
+    #         "active": self.speech_monitoring_active,
+    #         "thread_alive": self.speech_monitoring_thread and self.speech_monitoring_thread.is_alive()
+    #     }
 
     async def run(self):
         """运行修复版本的服务器"""
